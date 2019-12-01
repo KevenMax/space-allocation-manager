@@ -1,6 +1,7 @@
-// Equipe: Keven Max Noronha de Lima - 403258
-//         Luis Fernando Lopes Muniz - 402381
+// Equipe:
 //         Emanuel Maximiliano Pirilo Lima Sousa - 404513
+//         Keven Max Noronha de Lima - 403258
+//         Luis Fernando Lopes Muniz - 402381
 
 const readline = require("readline");
 
@@ -17,17 +18,20 @@ class App {
   async welcome() {
     console.log("Bem vindo ao Simulador de Alocação de Espaço!");
     console.log("===============================================\n");
-
-    this.state.diskSize = parseInt(
-      await this.ask(
-        "Para prosseguirmos na simulação, informe o tamanho do disco (em blocos): \n"
-      )
-    ); // recebendo e setando o tamanho do disco
-    this.state.allocationPolicy = parseInt(
-      await this.ask(
-        "Agora informe a política de alocação: \n[1] - First Fit\n[2] - Best Fit\n[3] - Worst Fit\n"
-      )
-    ); // recebendo e setando política de alocação
+    do {
+      this.state.diskSize = parseInt(
+        await this.ask(
+          "Para prosseguirmos na simulação, informe o tamanho do disco (em blocos): \n"
+        )
+      ); // recebendo e setando o tamanho do disco
+    } while (!this.validDiskSize(this.state.diskSize)); // loop para validar tamanho do disco
+    do {
+      this.state.allocationPolicy = parseInt(
+        await this.ask(
+          "Agora informe a política de alocação: \n[1] - First Fit\n[2] - Best Fit\n[3] - Worst Fit\n"
+        )
+      ); // recebendo e setando política de alocação
+    } while (!this.validAllocationPolicy(this.state.allocationPolicy)); // loop para validar política de alocação
     console.log("\n===============================================\n");
     this.createDisk(); // função que irá criar o disco
   }
@@ -48,10 +52,10 @@ class App {
       ); // recebendo qual operação será realizada
       switch (askMenu) {
         case "1":
-          await this.createFile(); // função responsável por criar o arquivo no disco
+          await this.createFile(); // função assíncrona responsável por criar o arquivo no disco
           break;
         case "2":
-          await this.deleteFile(); // função responsável por deletar o arquivo no disco
+          await this.deleteFile(); // função assíncrona responsável por deletar o arquivo no disco
           break;
         case "3":
           this.showAllocationTable(); // função responsável por exibir tabela de alocação
@@ -119,14 +123,14 @@ class App {
 
   firstFit(file) {
     const { diskSize, disk } = this.state; // disco e tamanho do disco
-    let cont = 0;
+    let cont = 0; // contador de ocorrências das sequências de blocos
     for (let i = 0; i < diskSize; i++) {
       // percorrendo o disco
       if (disk[i] === null) {
-        // verificando se o espaço é livre
+        // verificando se o bloco é livre
         cont++;
         if (cont === file.offsetSize) {
-          // verificando se a sequência de espaços livres é igual ao tamanho do deslocamento do arquivo
+          // verificando se a sequência de blocos livres é igual ao tamanho do deslocamento do arquivo
           file.startAdress = i - cont + 1;
           // definindo endereço inicial do arquivo como o inicio da sequência de blocos livre
           for (let j = i - cont + 1; j <= i; j++) {
@@ -196,11 +200,12 @@ class App {
         i <= position.startAdress + file.offsetSize - 1;
         i++
       ) {
-        // percorrendo o disco do endereço inicial da sequência livre até o tamanho do arquivo
+        // percorrendo o disco do endereço inicial da sequência livre até o tamanho do deslocamento do arquivo
         this.state.disk[i] = file; // guardando o arquivo no disco
       }
       console.log("Arquivo criado com sucesso!");
     } else {
+      // caso não exista sequência válida para o tamanho do deslocamento do arquivo
       console.log("Espaço de memória insuficiente :(");
     }
 
@@ -235,6 +240,7 @@ class App {
       }
       console.log("Arquivo criado com sucesso!");
     } else {
+      // caso não exista sequência válida para o tamanho do deslocamento do arquivo
       console.log("Espaço de memória insuficiente :(");
     }
 
@@ -243,34 +249,55 @@ class App {
 
   spacesFree() {
     const { diskSize, disk } = this.state; // disco e tamanho do arquivo
-    let count = 0;
+    let offsetSize = 0;
     let startAdress = -1;
     const spacesFree = new Array(); // definindo array de blocos livres
     for (let i = 0; i < diskSize; i++) {
       // percorrendo o disco
       if (disk[i] === null) {
         // verificando se o bloco está livre
-        count++; // incrementando quantidade de blocos livres da sequência
-        if (count === 1) {
+        offsetSize++; // incrementando quantidade de blocos livres da sequência
+        if (offsetSize === 1) {
           // verificando se é o primeiro bloco livre da sequência
           startAdress = i; // guardando o indice do primeiro bloco livre
         }
         if (i + 1 === diskSize) {
           // verificando se o indíce atual é o último do disco
-          let position = { startAdress, offsetSize: count }; // guardando o tamanho do deslocamento e o endereço inicial
+          let position = { startAdress, offsetSize }; // guardando o tamanho do deslocamento e o endereço inicial
           spacesFree.push(position); // adicionando o objeto ao array de espaços livres
         }
       } else {
         // caso o bloco esteja ocupado
-        if (count > 0) {
+        if (offsetSize > 0) {
           // verificando se a quantidade de blocos livres da última sequência é maior que 0
-          let position = { startAdress, offsetSize: count }; // guardando o tamanho do deslocamento e o endereço inicial
+          let position = { startAdress, offsetSize }; // guardando o tamanho do deslocamento e o endereço inicial
           spacesFree.push(position); // adicionando o objeto ao array de espaços livres
         }
-        count = 0; // definindo quantidade de blocos livres como 0
+        offsetSize = 0; // definindo quantidade de blocos livres como 0
       }
     }
     return spacesFree;
+  }
+
+  validDiskSize(diskSize) {
+    if (!Number.isInteger(diskSize) || diskSize <= 0) {
+      // verificando se o tamanho é válido
+      console.log("\nTamanho do disco inválido!");
+      return false;
+    }
+    return true;
+  }
+
+  validAllocationPolicy(allocationPolicy) {
+    if (
+      allocationPolicy !== 1 &&
+      allocationPolicy !== 2 &&
+      allocationPolicy !== 3
+    ) {
+      console.log("\nPolítica de alocação inválida!");
+      return false;
+    }
+    return true;
   }
 
   validId(id) {
@@ -279,7 +306,7 @@ class App {
       // percorrendo o disco
       if (disk[i] !== null && disk[i].id === id) {
         // verificando se o bloco está ocupado e se o identificador é igual ao identificador parâmetro
-        console.log("Arquivo já existente!\n");
+        console.log("\nArquivo já existente!");
         return false;
       }
     }
@@ -291,12 +318,12 @@ class App {
     if (offsetSize > diskSize) {
       // verificando se o tamanho passado pelo parâmetro é maior que o tamanho do disco
       console.log(
-        "Tamanho do deslocamento excede o tamanho definido para o disco!\n"
+        "\nTamanho do deslocamento excede o tamanho definido para o disco!"
       );
       return false;
-    } else if (offsetSize <= 0) {
-      // verificando se o tamanho passado pelo parâmetro é menor ou igual a zero
-      console.log("Tamanho do deslocamento deve ser maior que 0!\n");
+    } else if (!Number.isInteger(offsetSize) || offsetSize <= 0) {
+      // verificando se o tamanho passado pelo parâmetro é válido
+      console.log("\nTamanho do deslocamento inválido!");
       return false;
     }
     return true;
@@ -308,9 +335,9 @@ class App {
       output: process.stdout
     }); // definindo a leitura de dados
     return new Promise(resolve => {
-      // retornando uma Promise (processamento assíncrono)
+      // retornando uma Promise (objeto para processamento assíncrono)
       rl.question(question, answer => {
-        // função responsável por exibir primeiro argumento e retornar uma função callback para leitura de dados do teclado
+        // função responsável por exibir primeiro argumento e retornar uma função callback para capturar leitura de dados do teclado
         resolve(answer); // resposta da Promise
         rl.close(); // encerrando leitura de dados
       });
