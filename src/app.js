@@ -281,7 +281,7 @@ class App {
 
   validDiskSize(diskSize) {
     if (!Number.isInteger(diskSize) || diskSize <= 0) {
-      // verificando se o tamanho é válido
+      // verificando se o tamanho não é um número e se é menor ou igual 0
       console.log("\nTamanho do disco inválido!");
       return false;
     }
@@ -294,6 +294,7 @@ class App {
       allocationPolicy !== 2 &&
       allocationPolicy !== 3
     ) {
+      // verificando se a opção para a política de alocação não é nenhuma das 3
       console.log("\nPolítica de alocação inválida!");
       return false;
     }
